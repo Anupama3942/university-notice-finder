@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scraped Titles & Links</title>
+    <style>
+        :root {
+            --bg: #0b1020;
+            --card: #121a31;
+            --text: #e8ecff;
+            --muted: #9aa6d1;
+            --accent: #6ea8fe;
+            --border: #27345e;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: linear-gradient(180deg, #0b1020 0%, #101936 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 16px;
+        }
+
+        .header {
+            margin-bottom: 18px;
+        }
+
+        h1 {
+            margin: 0 0 6px;
+            font-size: 1.6rem;
+        }
+
+        .sub {
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .panel {
+            background: rgba(18, 26, 49, 0.9);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            backdrop-filter: blur(4px);
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        input[type="search"] {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: #0f1730;
+            color: var(--text);
+            outline: none;
+        }
+
+        ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .item {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .item:last-child {
+            border-bottom: none;
+        }
+
+        .title {
+            margin: 0 0 6px;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .url {
+            color: var(--accent);
+            text-decoration: none;
+            word-break: break-all;
+            font-size: 0.92rem;
+        }
+
+        .url:hover {
+            text-decoration: underline;
+        }
+
+        .empty {
+            padding: 20px 16px;
+            color: var(--muted);
+            text-align: center;
+        }
+
+        .count {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+    <main class="container">
+        <header class="header">
+            <h1>University Notice Finder</h1>
+            <p class="sub">Display and filter results.</p>
+
+            <div class="search-university">
+                <label for="university-select" class="sub" style="display:block; margin:10px 0 6px;">Select
+                    University</label>
+                <select id="university-select" name="university"
+                    style="width:100%; max-width:320px; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:#0f1730; color:var(--text);">
+                    <option value="">All Universities</option>
+                    {% for university in universities %}
+                    <option value="{{ university }}" {% if university == selected_uni %}selected{% endif %}>{{ university }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </header>
+
+        <section class="panel">
+            <div class="toolbar">
+                <input id="search" type="search" placeholder="Search by title or URL..." />
+            </div>
+            <ul id="results"></ul>
+            <div id="empty" class="empty" hidden>No results found.</div>
+        </section>
+
+        <div id="count" class="count"></div>
+    </main>
+
+    <script>
+
+        const data = {{ notices_json | safe }};
+
+        const resultsEl = document.getElementById("results");
+        const emptyEl = document.getElementById("empty");
+        const searchEl = document.getElementById("search");
+        const countEl = document.getElementById("count");
+
+        function render(items) {
+            resultsEl.innerHTML = "";
+
+            if (!items.length) {
+                emptyEl.hidden = false;
+                countEl.textContent = "0 results";
+                return;
+            }
+
+            emptyEl.hidden = true;
+            items.forEach(item => {
+                const li = document.createElement("li");
+                li.className = "item";
+                li.innerHTML = `
+                    <p class="title">${escapeHtml(item.title)}</p>
+                    <a class="url" href="${item.link}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.link)}</a>
+                `;
+                resultsEl.appendChild(li);
+            });
+
+            countEl.textContent = `${items.length} result${items.length > 1 ? "s" : ""}`;
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        const uniSelect = document.getElementById("university-select");
+
+        uniSelect.addEventListener("change", function () {
+            const selectedUniversity = this.value;
+
+            if (selectedUniversity) {
+                window.location.href = "/?university=" + encodeURIComponent(selectedUniversity);
+            } else {
+                window.location.href = "/";
+            }
+        });
+
+        searchEl.addEventListener("input", () => {
+            const q = searchEl.value.trim().toLowerCase();
+            const filtered = data.filter(item =>
+                item.title.toLowerCase().includes(q) || item.link.toLowerCase().includes(q)
+            );
+            render(filtered);
+        });
+
+        render(data);
+    </script>
+</body>
+
+</html>
