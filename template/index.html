@@ -131,9 +131,24 @@
                     style="width:100%; max-width:320px; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:#0f1730; color:var(--text);">
                     <option value="">All Universities</option>
                     {% for university in universities %}
-                    <option value="{{ university }}" {% if university == selected_uni %}selected{% endif %}>{{ university }}</option>
+                    <option value="{{ university }}" {% if university==selected_uni %}selected{% endif %}>{{ university
+                        }}</option>
                     {% endfor %}
                 </select>
+            </div>
+            <div style="margin-top: 20px; text-align: left;">
+                <a href="https://t.me/UOV_notice_bot" target="_blank" style="text-decoration: none;">
+                    <button
+                        style="padding: 12px 20px; border-radius: 8px; border: none; background: #2481cc; color: #fff; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M22 2L11 13" stroke="white" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg>
+                        Get Notifications via Telegram
+                    </button>
+                </a>
             </div>
         </header>
 

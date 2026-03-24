@@ -7,11 +7,20 @@ from dotenv import load_dotenv
 from email.message import EmailMessage
 import schedule
 import time
+import logging
+from requests.exceptions import RequestException, Timeout, ConnectionError
 
 load_dotenv()
 email = os.getenv("EMAIL_USER")
 password = os.getenv("EMAIL_PASSWORD")
 receiver_email = "anupamaaluthge@gmail.com"
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+)
+logger = logging.getLogger(__name__)
 
 def message_fomat(title, link):
     msg = EmailMessage()
@@ -70,6 +79,7 @@ def save_notice(conn, cursor, university, title, link):
         conn.commit()
         print(f"New Notice found {title}")
         send_email(title, link)
+        send_telegram_notice(title, link, university)
     else:
         print("Notice already exist")
         
@@ -82,6 +92,53 @@ def send_email(title, link):
     server.send_message(message)
     
     server.quit()
+    
+def send_telegram_notice(title, link, university):
+    if not TOKEN:
+        logger.warning("TELEGRAM_TOKEN not set; skipping Telegram notification")
+        return
+
+    conn = sqlite3.connect("notices.db")
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT telegram_id FROM users WHERE university = ?", (university,))
+    users = cursor.fetchall()
+    conn.close()
+
+    if not users:
+        logger.info(f"No registered Telegram users for {university}")
+        return
+
+    message = f"📢 New Notice ({university})\n{title}\n{link}"
+    success_count = 0
+    fail_count = 0
+
+    for user in users:
+        chat_id = user[0]
+        try:
+            response = requests.post(
+                f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+                json={"chat_id": chat_id, "text": message},
+                timeout=10,
+            )
+            response.raise_for_status()
+            success_count += 1
+            logger.debug(f"Notice sent to chat_id {chat_id}")
+        except Timeout:
+            fail_count += 1
+            logger.warning(f"Timeout sending to chat_id {chat_id}; will retry")
+        except ConnectionError as e:
+            fail_count += 1
+            logger.warning(f"Connection error to chat_id {chat_id}: {e}")
+        except RequestException as e:
+            fail_count += 1
+            logger.error(f"Request error sending to chat_id {chat_id}: {e}")
+        except Exception as e:
+            fail_count += 1
+            logger.error(f"Unexpected error sending to chat_id {chat_id}: {e}")
+
+    logger.info(f"Telegram notice delivery for {university}: {success_count} sent, {fail_count} failed (total users: {len(users)})")
+      
 
 def scrape_RUSL(conn, cursor):
     

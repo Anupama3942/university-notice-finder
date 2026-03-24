@@ -15,7 +15,7 @@ def home():
     universities = [row['university'] for row in cursor.fetchall()]
     
     if selected_uni:
-        cursor.execute("SELECT title, link FROM notices WHERE university =?", (selected_uni))
+        cursor.execute("SELECT title, link FROM notices WHERE university =?", (selected_uni,))
     else:
         cursor.execute("SELECT title, link FROM notices")
 

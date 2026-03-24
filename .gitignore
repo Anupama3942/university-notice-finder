@@ -2,3 +2,7 @@
 notices.db
 __pycache__/
 *.pyc
+.gitignore
+tempCodeRunnerFile.py
+view_db.py
+
