@@ -13,7 +13,7 @@ from requests.exceptions import RequestException, Timeout, ConnectionError
 load_dotenv()
 email = os.getenv("EMAIL_USER")
 password = os.getenv("EMAIL_PASSWORD")
-receiver_email = "anupamaaluthge@gmail.com"
+# receiver_email = "a
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 logging.basicConfig(
@@ -22,7 +22,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def message_fomat(title, link):
+def message_fomat(title, link, receiver_email):
     msg = EmailMessage()
     msg['Subject'] = f"🎓 New University Notice: {title[:30]}..."
     msg['From'] = f"University Alert System {email}"
@@ -78,20 +78,39 @@ def save_notice(conn, cursor, university, title, link):
         cursor.execute("INSERT INTO notices(university, title, link) VALUES(?,?,?)", (university, title, link))
         conn.commit()
         print(f"New Notice found {title}")
-        send_email(title, link)
+        send_email(title, link, university)
         send_telegram_notice(title, link, university)
     else:
         print("Notice already exist")
         
-def send_email(title, link):
+def send_email(title, link, university):
     
-    server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
-    # server.starttls()
-    server.login(email, password)
-    message = message_fomat(title, link)
-    server.send_message(message)
+    conn = sqlite3.connect("notices.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT email FROM users WHERE university = ? AND email IS NOT NULL", (university,))
+    recipents = [row[0] for row in cursor.fetchall()]
+    conn.close()
     
-    server.quit()
+    if not recipents:
+        logger.info(f"No registered email users for {university}")
+        return
+
+    try:
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+        # server.starttls()
+        server.login(email, password)
+
+        for receiver_email in recipents:
+            message = message_fomat(title, link, receiver_email)
+            server.send_message(message)
+            logger.info(f"Email sent to {receiver_email}")
+
+        server.quit()
+    except Exception as e:
+        logger.error(f"Error sending email: {e}")
+            
+    
+    
     
 def send_telegram_notice(title, link, university):
     if not TOKEN:
@@ -207,8 +226,8 @@ def check_notices():
     
     scrape_RUSL(db_conn, db_cursor)
     scrape_UOM(db_conn, db_cursor)
-    scrape_UOV(db_conn, db_cursor)
     scrape_UOK(db_conn, db_cursor)
+    scrape_UOV(db_conn, db_cursor)
     
     db_conn.close();
 

@@ -150,6 +150,38 @@
                     </button>
                 </a>
             </div>
+
+            <div
+                style="margin-top: 24px; background: rgba(18,26,49,0.9); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
+                <h2 style="margin: 0 0 6px; font-size: 1.1rem;">📧 Subscribe for Email Alerts</h2>
+                <p style="color: var(--muted); font-size: 0.9rem; margin: 0 0 16px;">You will receive email alerts for
+                    new notices.</p>
+
+                <div style="display: flex; flex-direction: column; gap: 10px; max-width: 420px;">
+
+                    <input type="text" id="sub-name" placeholder="Your Name"
+                        style="padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:#0f1730; color:var(--text); outline:none;" />
+
+                    <input type="email" id="sub-email" placeholder="email@example.com"
+                        style="padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:#0f1730; color:var(--text); outline:none;" />
+
+                    <select id="sub-university"
+                        style="padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:#0f1730; color:var(--text);">
+                        <option value="">-- Select University --</option>
+                        {% for university in universities %}
+                        <option value="{{ university }}">{{ university }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <button onclick="subscribeEmail()"
+                        style="padding:11px; border-radius:8px; border:none; background:#004a99; color:#fff; font-weight:bold; cursor:pointer;">
+                        Subscribe
+                    </button>
+
+                    <!-- Success / Error message -->
+                    <p id="sub-msg" style="margin:0; font-size:0.9rem; display:none;"></p>
+                </div>
+            </div>
         </header>
 
         <section class="panel">
@@ -163,9 +195,10 @@
         <div id="count" class="count"></div>
     </main>
 
+    <script id="notices-json" type="application/json">{{ notices_json | safe }}</script>
     <script>
 
-        const data = {{ notices_json | safe }};
+        const data = JSON.parse(document.getElementById("notices-json").textContent || "[]");
 
         const resultsEl = document.getElementById("results");
         const emptyEl = document.getElementById("empty");
@@ -225,6 +258,52 @@
         });
 
         render(data);
+
+        async function subscribeEmail() {
+            const name = document.getElementById("sub-name").value.trim();
+            const email = document.getElementById("sub-email").value.trim();
+            const university = document.getElementById("sub-university").value;
+            const msgEl = document.getElementById("sub-msg");
+
+            // Frontend validation
+            if (!name || !email || !university) {
+                msgEl.style.color = "#f87171";   // red
+                msgEl.textContent = "⚠️ All fields must be filled!";
+                msgEl.style.display = "block";
+                return;
+            }
+
+            // Basic email format check
+            try {
+                const response = await fetch("/subscribe", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, email, university })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    msgEl.style.color = "#4ade80";   // green
+                    msgEl.textContent = "✅ " + result.message;
+                    // Form clear 
+                    document.getElementById("sub-name").value = "";
+                    document.getElementById("sub-email").value = "";
+                    document.getElementById("sub-university").value = "";
+                } else {
+                    msgEl.style.color = "#f87171";   // red
+                    msgEl.textContent = "❌ " + result.message;
+                }
+
+                msgEl.style.display = "block";
+
+            } catch (err) {
+                msgEl.style.color = "#f87171";
+                msgEl.textContent = "❌ Server error! Please try again later.";
+                msgEl.style.display = "block";
+            }
+        }
+
     </script>
 </body>
 

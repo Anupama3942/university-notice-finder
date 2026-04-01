@@ -1,5 +1,5 @@
 import json
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 import sqlite3
 
 app = Flask(__name__, template_folder="template")
@@ -29,6 +29,54 @@ def home():
         universities=universities,
         selected_uni=selected_uni
     )
+    
+@app.route("/subscribe", methods=["POST"])
+def subscribe():
+    data = request.get_json()
+    name = data.get("name", "").strip()
+    email = data.get("email", "").strip()
+    university = data.get("university", "").strip()
+    
+    # check empty fields
+    if not name or not email or not university:
+        return jsonify(
+            {"success": False, "message": "every field must be filled."}
+        )
+        
+    conn = sqlite3.connect("notices.db")
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            university TEXT,
+            email TEXT,
+            telegram_id TEXT UNIQUE
+        )
+        """
+    )
+    
+    cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        conn.close()
+        return jsonify(
+            {"success": False, "message": "This email is already registered."}
+        )
+    
+    cursor.execute(
+        "INSERT INTO users (name, university, email) VALUES (?, ?, ?)", (name, university, email)
+    )
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify(
+    {"success": True, "message": f"Thank You {name}! You will now receive updates from {university} 🎉"}
+    )   
 
 if __name__ == "__main__":
     app.run(debug=True, use_reloader=False)
